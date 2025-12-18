@@ -4,14 +4,14 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 # ====================
 # НАСТРОЙКИ
 # ====================
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "5633585199"))
-CHANNEL_ID = int(os.getenv("CHANNEL_ID", "-1002733453915"))
+CHANNEL_ID = int(os.getenv("CHANNEL_ID", "-1002593053252"))
 
 # Настройка логов
 logging.basicConfig(
@@ -430,7 +430,7 @@ async def check_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if active_users:
         message = "🟢 **АКТИВНЫЕ ПОЛЬЗОВАТЕЛИ:**\n\n"
         
-        for i, user in enumerate(active_users[:50], 1):  # Ограничим 50 пользователями
+        for i, user in enumerate(active_users[:50], 1):
             status_icon = "🟡" if user["days_left"] <= 1 else "🟢"
             
             message += f"{i}. {status_icon} **{user['info']['name']}**\n"
@@ -441,7 +441,7 @@ async def check_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message += f"   ⏳ Осталось: {user['days_left']} дней\n"
             message += f"   📅 До: {user['end_date'].strftime('%d.%m.%Y %H:%M')}\n\n"
             
-            if i % 5 == 0:  # Каждые 5 пользователей - новое сообщение
+            if i % 5 == 0:
                 await update.message.reply_text(message, parse_mode='Markdown')
                 message = ""
                 await asyncio.sleep(0.5)
@@ -453,7 +453,7 @@ async def check_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if expired_users:
         message = "🔴 **ИСТЕКШИЕ ПОДПИСКИ:**\n\n"
         
-        for i, user in enumerate(expired_users[:20], 1):  # Ограничим 20 пользователями
+        for i, user in enumerate(expired_users[:20], 1):
             message += f"{i}. 🔴 **{user['info']['name']}**\n"
             message += f"   📱 {user['info']['profile_link']}\n"
             message += f"   🆔 ID: `{user['id']}`\n"
@@ -533,7 +533,6 @@ async def get_ids(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message += f"   🆔 ID: `{user.id}`\n"
             message += f"   🔗 {username}\n\n"
             
-            # Каждые 5 участников - новое сообщение
             if count % 5 == 0:
                 await update.message.reply_text(message, parse_mode='Markdown')
                 message = ""
@@ -562,11 +561,11 @@ async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     try:
-        count = 50  # По умолчанию 50 последних
+        count = 50
         if context.args:
             try:
                 count = int(context.args[0])
-                count = min(count, 100)  # Ограничиваем 100
+                count = min(count, 100)
             except:
                 pass
     except:
@@ -584,7 +583,7 @@ async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for i, action in enumerate(history["actions"][:count], 1):
         message += f"{i}. **{action['timestamp']}** - {action['action']}\n\n"
         
-        if i % 10 == 0:  # Каждые 10 действий - новое сообщение
+        if i % 10 == 0:
             await update.message.reply_text(message, parse_mode='Markdown')
             message = ""
             await asyncio.sleep(0.5)
@@ -597,12 +596,11 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await admin_only(update, context):
         return
     
-    # Статистика из базы
     data = load_users()
     now = datetime.now().timestamp()
     
     active_count = 0
-    expiring_soon = 0  # Менее 3 дней
+    expiring_soon = 0
     expired_count = 0
     
     for end_time in data.values():
@@ -615,7 +613,6 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             expired_count += 1
     
-    # Статистика канала
     channel_stats = "❓ Неизвестно"
     try:
         chat = await context.bot.get_chat(CHANNEL_ID)
@@ -677,7 +674,7 @@ async def ignore_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ====================
 async def background_checker(app):
     """Фоновая проверка подписок"""
-    notified_users = {}  # Словарь для хранения когда уведомляли
+    notified_users = {}
     
     while True:
         try:
@@ -690,11 +687,8 @@ async def background_checker(app):
                 
                 # Уведомление за 1 день (24 часа)
                 if 0 < remaining < 86400:
-                    # Проверяем не уведомляли ли уже
                     last_notified = notified_users.get(user_id_str)
-                    current_hour = datetime.now().hour
                     
-                    # Уведомляем только если не уведомляли в последние 12 часов
                     if not last_notified or (now - last_notified) > 43200:
                         try:
                             user_info = await get_user_info(app.bot, user_id)
@@ -726,7 +720,6 @@ async def background_checker(app):
                         await app.bot.ban_chat_member(CHANNEL_ID, user_id)
                         await app.bot.unban_chat_member(CHANNEL_ID, user_id)
                         
-                        # Удаляем из уведомлений если был там
                         if user_id_str in notified_users:
                             del notified_users[user_id_str]
                         
@@ -756,7 +749,7 @@ async def background_checker(app):
         except Exception as e:
             logger.error(f"Ошибка в фоновой проверке: {e}")
         
-        await asyncio.sleep(300)  # Проверка каждые 5 минут
+        await asyncio.sleep(300)
 
 # ====================
 # ЗАПУСК БОТА
